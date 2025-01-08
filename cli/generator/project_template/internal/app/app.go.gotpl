@@ -1,0 +1,17 @@
+// templates/internal/app/app.go
+package app
+
+import (
+	"GOGOGO_MODULE_PATH/internal/handlers"
+
+	"github.com/brainmaniac/gogogo/framework/app"
+)
+
+func New() *app.App {
+	app := app.New()
+
+	// Mount routes
+	app.Mount("/", handlers.NewHomeHandler())
+
+	return app
+}

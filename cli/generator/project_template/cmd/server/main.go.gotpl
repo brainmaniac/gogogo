@@ -1,0 +1,24 @@
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
+	"{{.ModulePath}}/internal/app"
+)
+
+func main() {
+	godotenv.Load()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	app := app.New()
+
+	log.Printf("Server starting on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, app))
+}
