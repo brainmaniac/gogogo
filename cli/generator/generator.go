@@ -1,21 +1,21 @@
+// cli/generator/generator.go
 package generator
 
 import (
 	"embed"
 	"fmt"
 	"os"
-	"os/exec"
+	"os/exec" // add this for exec.Command
 	"path/filepath"
-	"strings"
 	"text/template"
 )
 
-//go:embed project_template/*
+//go:embed project_template
 var templates embed.FS
 
 type ProjectData struct {
-	Name       string
-	ModulePath string
+	Name       string // Project name
+	ModulePath string // Full module path (e.g., github.com/username/project)
 }
 
 func GenerateProject(name string) error {
@@ -29,57 +29,77 @@ func GenerateProject(name string) error {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
-	// Copy all template files
-	if err := filepath.Walk("templates", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	// Walk through the embedded templates
+	entries, err := templates.ReadDir("project_template")
+	if err != nil {
+		return fmt.Errorf("failed to read templates: %w", err)
+	}
+
+	for _, entry := range entries {
+		if err := processEntry("project_template", name, entry, data); err != nil {
+			return fmt.Errorf("failed to process %s: %w", entry.Name(), err)
 		}
-
-		relPath, err := filepath.Rel("templates", path)
-		if err != nil {
-			return err
-		}
-
-		destPath := filepath.Join(name, relPath)
-
-		if info.IsDir() {
-			return os.MkdirAll(destPath, 0755)
-		}
-
-		return processTemplateFile(path, destPath, data)
-	}); err != nil {
-		return err
 	}
 
 	// Initialize go.mod
 	if err := initGoMod(name, data.ModulePath); err != nil {
-		return err
+		return fmt.Errorf("failed to initialize go.mod: %w", err)
 	}
 
 	return nil
 }
 
-// cli/generator/generator.go
+func processEntry(base, dest string, entry os.DirEntry, data ProjectData) error {
+	sourcePath := filepath.Join(base, entry.Name())
+	destPath := filepath.Join(dest, entry.Name())
+
+	if entry.IsDir() {
+		// Create the directory
+		if err := os.MkdirAll(destPath, 0755); err != nil {
+			return err
+		}
+
+		// Process contents of the directory
+		entries, err := templates.ReadDir(sourcePath)
+		if err != nil {
+			return err
+		}
+
+		for _, e := range entries {
+			if err := processEntry(sourcePath, destPath, e, data); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Process file
+	return processTemplateFile(sourcePath, destPath, data)
+}
+
 func processTemplateFile(src, dest string, data ProjectData) error {
 	content, err := templates.ReadFile(src)
 	if err != nil {
 		return err
 	}
 
-	// First replace our module path placeholder
-	contentStr := strings.ReplaceAll(string(content), "GOGOGO_MODULE_PATH", data.ModulePath)
-
-	// Then process any other template variables
-	tmpl, err := template.New(filepath.Base(src)).Parse(contentStr)
-	if err != nil {
-		return err
+	// If it's a .gotpl file, remove the extension
+	if filepath.Ext(dest) == ".gotpl" {
+		dest = dest[:len(dest)-6] // remove .gotpl
 	}
 
+	// Create the destination file
 	f, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
+	// Parse and execute the template
+	tmpl, err := template.New(filepath.Base(src)).Parse(string(content))
+	if err != nil {
+		return err
+	}
 
 	return tmpl.Execute(f, data)
 }
