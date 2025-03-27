@@ -9,7 +9,7 @@ templ Home() {
                 Welcome to {{.Name}}
             </h1>
             <p class="text-center text-gray-600">
-                Built with GoGoGo - The Go Framework for Pragmatic Developers
+                Built with GoGoGo
             </p>
         </div>
     }

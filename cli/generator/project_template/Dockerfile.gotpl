@@ -1,0 +1,34 @@
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# Install Go tools and required packages
+RUN go install github.com/air-verse/air@latest && \
+    go install github.com/a-h/templ/cmd/templ@latest
+
+# Create necessary directories
+RUN mkdir -p /app/tmp /app/public/css
+
+# Copy go.mod first for better caching
+COPY go.mod go.sum* ./
+RUN go mod download
+
+# Copy the rest of the project files
+COPY . .
+
+# Ensure Tailwind binary is executable
+RUN chmod +x tailwindcss
+
+# Generate initial files and ensure CSS is readable
+RUN go generate ./... && \
+    chmod -R 644 public/css/*.css && \
+    echo "Checking CSS file:" && \
+    ls -la public/css/ && \
+    pwd && \
+    echo "Current directory contents:" && \
+    ls -R
+
+EXPOSE 8080
+
+# Run air for development
+CMD ["air"]

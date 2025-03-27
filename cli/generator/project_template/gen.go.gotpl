@@ -1,0 +1,4 @@
+package tools
+
+//go:generate templ generate
+//go:generate ./tailwindcss -i ./assets/css/input.css -o ./public/css/app.css --minify

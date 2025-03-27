@@ -1,17 +1,20 @@
-// templates/internal/app/app.go
 package app
 
 import (
-	"GOGOGO_MODULE_PATH/internal/handlers"
-
-	"github.com/brainmaniac/gogogo/framework/app"
+    "net/http"
+    "github.com/brainmaniac/gogogo/framework/app"
+    "{{.ModulePath}}/internal/handlers"
 )
 
 func New() *app.App {
-	app := app.New()
+    app := app.New()
 
-	// Mount routes
-	app.Mount("/", handlers.NewHomeHandler())
+    // Serve static files from the public directory
+    fileServer := http.FileServer(http.Dir("public"))
+    app.Router.Handle("/css/", http.StripPrefix("/css/", fileServer))
 
-	return app
+    // Mount routes
+    app.Mount("/", handlers.NewHomeHandler())
+
+    return app
 }
